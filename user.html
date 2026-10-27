@@ -1,0 +1,207 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Portal</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+        header {
+            background: #2563eb;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+        nav {
+            background: #1e293b;
+            padding: 15px;
+            text-align: center;
+        }
+        nav a {
+            color: white;
+            margin: 15px;
+            text-decoration: none;
+        }
+        main {
+            max-width: 850px;
+            margin: auto;
+            padding: 20px;
+        }
+        section, .stat {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px #0001;
+        }
+        input, button {
+            padding: 10px;
+            margin: 5px;
+            border-radius: 5px;
+            border: 1px solid #cbd5e1;
+        }
+        button {
+            background: #2563eb;
+            color: white;
+            cursor: pointer;
+            border: none;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 10px;
+        }
+        .stat { text-align: center; }
+        .stat h2 { color: #2563eb; }
+        .table-wrap { overflow-x: auto; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+        th { background: #dbeafe; }
+        #dashboard { display: none; }
+        #error { color: #dc2626; }
+    </style>
+</head>
+<body>
+<header>
+    <h1>Student Portal</h1>
+    <p>Check Your Attendance</p>
+</header>
+
+<nav>
+    <a href="index.html">Home</a>
+    <a href="admin.html">Admin</a>
+    <a href="user.html">Student Portal</a>
+</nav>
+
+<main>
+    <section>
+        <h2>Find Your Attendance</h2>
+        <form id="searchForm">
+            <label for="studentId">Student ID:</label>
+            <input id="studentId" placeholder="Enter Student ID" required>
+            <button type="submit">Search</button>
+        </form>
+        <p id="error"></p>
+    </section>
+
+    <div id="dashboard">
+        <section>
+            <h2>Student Details</h2>
+            <p><b>Name:</b> <span id="name"></span></p>
+            <p><b>ID:</b> <span id="id"></span></p>
+            <p><b>Course / Section:</b> <span id="course"></span></p>
+        </section>
+
+        <div class="stats">
+            <div class="stat">
+                <p>Total Sessions</p>
+                <h2 id="total">0</h2>
+            </div>
+            <div class="stat">
+                <p>Present</p>
+                <h2 id="present">0</h2>
+            </div>
+            <div class="stat">
+                <p>Absent</p>
+                <h2 id="absent">0</h2>
+            </div>
+            <div class="stat">
+                <p>Attendance</p>
+                <h2 id="percentage">0%</h2>
+            </div>
+        </div>
+
+        <section>
+            <h2>Attendance History</h2>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history"></tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+</main>
+
+<script>
+    const getStudents = () =>
+        JSON.parse(localStorage.getItem("students") || "[]");
+
+    const getRecords = () =>
+        JSON.parse(localStorage.getItem("attendance") || "[]");
+
+    document.getElementById("searchForm").onsubmit = function(e) {
+        e.preventDefault();
+
+        const id = document.getElementById("studentId").value.trim();
+        const student = getStudents().find(s => s.id === id);
+        const dashboard = document.getElementById("dashboard");
+        const error = document.getElementById("error");
+
+        if (!student) {
+            error.textContent = "Student not found. Check the ID.";
+            dashboard.style.display = "none";
+            return;
+        }
+
+        error.textContent = "";
+
+        const records = getRecords()
+            .filter(r => r.id === id)
+            .sort((a, b) => b.date.localeCompare(a.date));
+
+        const present = records.filter(r => r.status === "Present").length;
+        const absent = records.filter(r => r.status === "Absent").length;
+        const total = present + absent;
+        const percentage = total
+            ? (present / total * 100).toFixed(1)
+            : "0.0";
+
+        document.getElementById("name").textContent = student.name;
+        document.getElementById("id").textContent = student.id;
+        document.getElementById("course").textContent = student.course;
+
+        document.getElementById("total").textContent = total;
+        document.getElementById("present").textContent = present;
+        document.getElementById("absent").textContent = absent;
+        document.getElementById("percentage").textContent = percentage + "%";
+
+        const history = document.getElementById("history");
+        history.replaceChildren();
+
+        if (records.length === 0) {
+            const row = history.insertRow();
+            const cell = row.insertCell();
+            cell.colSpan = 2;
+            cell.textContent = "No attendance records yet.";
+        } else {
+            records.forEach(r => {
+                const row = history.insertRow();
+                row.insertCell().textContent = r.date;
+                row.insertCell().textContent = r.status;
+            });
+        }
+
+        dashboard.style.display = "block";
+    };
+</script>
+</body>
+</html>
