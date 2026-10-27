@@ -1,0 +1,295 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+        header {
+            background: #2563eb;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        nav {
+            background: #1e293b;
+            padding: 15px;
+            text-align: center;
+        }
+        nav a {
+            color: white;
+            margin: 15px;
+            text-decoration: none;
+        }
+        main {
+            max-width: 950px;
+            margin: auto;
+            padding: 20px;
+        }
+        section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px #0001;
+        }
+        input, select, button {
+            padding: 10px;
+            margin: 5px;
+            border: 1px solid #cbd5e1;
+            border-radius: 5px;
+        }
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .delete { background: #dc2626; }
+        .table-wrap { overflow-x: auto; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+        th { background: #dbeafe; }
+    </style>
+</head>
+<body>
+<header>
+    <h1>Admin Dashboard</h1>
+    <p>Manage Students and Attendance</p>
+</header>
+
+<nav>
+    <a href="index.html">Home</a>
+    <a href="admin.html">Admin</a>
+    <a href="user.html">Student Portal</a>
+</nav>
+
+<main>
+    <section>
+        <h2>Add Student</h2>
+        <form id="studentForm">
+            <input id="sid" placeholder="Student ID" required>
+            <input id="sname" placeholder="Student Name" required>
+            <input id="course" placeholder="Course / Section" required>
+            <button type="submit">Add Student</button>
+        </form>
+        <p id="studentMessage"></p>
+    </section>
+
+    <section>
+        <h2>Mark Attendance</h2>
+        <label for="date">Select Date:</label>
+        <input type="date" id="date" required>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="markTable"></tbody>
+            </table>
+        </div>
+
+        <button id="saveAttendance">Save Attendance</button>
+        <p id="message"></p>
+    </section>
+
+    <section>
+        <h2>Attendance Records</h2>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Student ID</th>
+                        <th>Name</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="recordsTable"></tbody>
+            </table>
+        </div>
+    </section>
+
+    <section>
+        <h2>Registered Students</h2>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Course</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="studentsTable"></tbody>
+            </table>
+        </div>
+    </section>
+</main>
+
+<script>
+    const getStudents = () =>
+        JSON.parse(localStorage.getItem("students") || "[]");
+
+    const getRecords = () =>
+        JSON.parse(localStorage.getItem("attendance") || "[]");
+
+    const saveStudents = data =>
+        localStorage.setItem("students", JSON.stringify(data));
+
+    const saveRecords = data =>
+        localStorage.setItem("attendance", JSON.stringify(data));
+
+    const dateInput = document.getElementById("date");
+
+    function today() {
+        const d = new Date();
+        return d.getFullYear() + "-" +
+            String(d.getMonth() + 1).padStart(2, "0") + "-" +
+            String(d.getDate()).padStart(2, "0");
+    }
+
+    dateInput.value = today();
+
+    function safe(value) {
+        return String(value).replace(/[&<>"']/g, c => ({
+            "&": "&amp;", "<": "&lt;", ">": "&gt;",
+            '"': "&quot;", "'": "&#39;"
+        })[c]);
+    }
+
+    document.getElementById("studentForm").onsubmit = function(e) {
+        e.preventDefault();
+
+        const id = document.getElementById("sid").value.trim();
+        const name = document.getElementById("sname").value.trim();
+        const course = document.getElementById("course").value.trim();
+        const students = getStudents();
+
+        if (students.some(s => s.id === id)) {
+            document.getElementById("studentMessage").textContent =
+                "Student ID already exists.";
+            return;
+        }
+
+        students.push({ id, name, course });
+        saveStudents(students);
+        this.reset();
+
+        document.getElementById("studentMessage").textContent =
+            "Student added successfully.";
+        render();
+    };
+
+    function renderMarkTable() {
+        const date = dateInput.value;
+        const records = getRecords();
+
+        document.getElementById("markTable").innerHTML =
+            getStudents().map(s => {
+                const record = records.find(
+                    r => r.id === s.id && r.date === date
+                );
+                const status = record ? record.status : "Present";
+
+                return `<tr>
+                    <td>${safe(s.id)}</td>
+                    <td>${safe(s.name)}</td>
+                    <td>
+                        <select class="status" data-id="${safe(s.id)}">
+                            <option ${status === "Present" ? "selected" : ""}>Present</option>
+                            <option ${status === "Absent" ? "selected" : ""}>Absent</option>
+                        </select>
+                    </td>
+                </tr>`;
+            }).join("");
+    }
+
+    dateInput.addEventListener("change", renderMarkTable);
+
+    document.getElementById("saveAttendance").onclick = function() {
+        const date = dateInput.value;
+
+        if (!date) {
+            alert("Please select a date.");
+            return;
+        }
+
+        const records = getRecords().filter(r => r.date !== date);
+
+        document.querySelectorAll(".status").forEach(select => {
+            records.push({
+                id: select.dataset.id,
+                date: date,
+                status: select.value
+            });
+        });
+
+        saveRecords(records);
+        document.getElementById("message").textContent =
+            "Attendance saved successfully!";
+        render();
+    };
+
+    function render() {
+        const students = getStudents();
+        const records = getRecords();
+
+        document.getElementById("studentsTable").innerHTML =
+            students.map(s => `<tr>
+                <td>${safe(s.id)}</td>
+                <td>${safe(s.name)}</td>
+                <td>${safe(s.course)}</td>
+                <td><button class="delete" data-id="${safe(s.id)}">Delete</button></td>
+            </tr>`).join("");
+
+        document.querySelectorAll(".delete").forEach(btn => {
+            btn.onclick = function() {
+                if (!confirm("Delete this student and their records?")) return;
+
+                saveStudents(getStudents().filter(s => s.id !== btn.dataset.id));
+                saveRecords(getRecords().filter(r => r.id !== btn.dataset.id));
+                render();
+            };
+        });
+
+        document.getElementById("recordsTable").innerHTML =
+            records.slice().sort((a, b) => b.date.localeCompare(a.date))
+            .map(r => {
+                const s = students.find(s => s.id === r.id);
+                return `<tr>
+                    <td>${safe(r.date)}</td>
+                    <td>${safe(r.id)}</td>
+                    <td>${safe(s ? s.name : "Deleted student")}</td>
+                    <td>${safe(r.status)}</td>
+                </tr>`;
+            }).join("");
+
+        renderMarkTable();
+    }
+
+    render();
+</script>
+</body>
+</html>
